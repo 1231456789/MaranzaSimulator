@@ -482,7 +482,7 @@ function freshState(nome, sesso){
   return {
     nome, sesso,
     giorno:1,
-    grana:50, rispetto:10, hype:5, drip:0, studio:0,
+    grana:45, rispetto:9, hype:4, drip:0, studio:0,
     sbatti:3,                 // azioni per giorno
     materie:[4,4,4,4,4,4,4,4,4], // 9 materie, voto 0..10 (parte da 4 → studio 40, borderline)
     selMat:0,
@@ -520,8 +520,8 @@ const CRUSH_F = [
 function rizz(){ return clamp(Math.round(S.hype*0.4 + S.drip*0.4 + S.rispetto*0.2),0,100); }
 
 /* ============ MORTI DEMENZIALI (game over casuale) ============ */
-/* ~0.99% al giorno × ~29 giorni ⇒ in media ~1 partita su 4 finisce così */
-const DEATH_PER_DAY = 0.0099;
+/* ~4.7% al giorno × ~29 giorni ⇒ in media ~3 partite su 4 finiscono così */
+const DEATH_PER_DAY = 0.047;
 const DEATHS = [
   {emoji:"👮", ono:"MANI IN ALTO!", acc:"#4dc3ff", titolo:"DENTRO.", txt:"Senza alcun motivo insulti un carabiniere in piazza. Sei dentro prima ancora di finire la frase. <i>Scialla un par de mesi.</i>"},
   {emoji:"🏗️", ono:"CRAAACK", acc:"#ffc93c", titolo:"SPIACE.", txt:"Ti arrampichi su un'impalcatura per fare il tag della vita. La gravità non perdona, fra. Ospedale, due mesi di gesso firmato dai prof."},
@@ -786,8 +786,8 @@ function dormi(){
   // morte improvvisa demenziale (~1 partita su 4)
   if(Math.random() < DEATH_PER_DAY){ morteImprovvisa(); return; }
   // decadimenti passivi ribilanciati: l'hype svanisce in fretta, il rispetto va riguadagnato
-  S.hype = clamp(S.hype-3,0,100);
-  if(S.rispetto>12) S.rispetto-=2;
+  S.hype = clamp(S.hype-4,0,100);
+  if(S.rispetto>10) S.rispetto-=3;
 
   // crush: la vibe cala, e se la trascuri ti ghosta
   let ghosted=null;
@@ -1420,7 +1420,7 @@ function bossFinale(){
     {k:"rizz",   e:"💘", t:"Gara di rizz",     d:"Chi fa più colpo nella piazza.", pw: Math.round(rz*0.75 + (S.crush?S.crush.vibe*0.35:0))},
     {k:"faccia", e:"🔥", t:"Faccia a faccia",  d:"Sguardi, rispetto, sangue freddo.", pw: Math.round(S.rispetto*0.8 + S.hype*0.25)},
   ];
-  RIVAL_PW = 52; // soglia da battere (± fortuna)
+  RIVAL_PW = 64; // soglia da battere (± fortuna) — sfida più tosta
   const myBest = Math.max(...mosse.map(m=>m.pw));
   const b = $("boss");
   b.innerHTML = `
@@ -1437,11 +1437,11 @@ function bossFinale(){
   `;
   b.classList.remove("hide");
 }
-let RIVAL_PW = 52;
+let RIVAL_PW = 64;
 
 function resolveBoss(pw, label){
-  const mine  = pw + random(16) - 7;
-  const their = RIVAL_PW + random(16) - 8;
+  const mine  = pw + random(14) - 7;
+  const their = RIVAL_PW + random(14) - 6;
   const won = mine >= their;
   play(won ? "win" : "fail");
   const b = $("boss");
