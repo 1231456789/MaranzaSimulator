@@ -325,6 +325,7 @@ h2.title{font-family:var(--disp); font-size:30px; line-height:.95; margin:2px 0 
     </div>
     <button class="btn btn-lime" id="startBtn" style="margin-top:6px">Scendo in piazza →</button>
     <div class="fineprint">
+      <i>«Posa il telefono ed esci di casa.» — Pubblicità Progresso per il recupero dei giovani affetti da brainrot, sponsorizzata da Obscura Truckware.</i><br><br>
       Remake satirico di <b>Tabboz Simulator</b> (1997–1999) di Andrea Bonomi · GPL-3.0.<br>
       Il modulo Scuola usa la stessa logica del codice originale. È una parodia di uno stile, scialla.
     </div>
@@ -497,13 +498,14 @@ function freshState(nome, sesso){
 
 /* veicoli: dal monopattino da NPC alla macchina da boss */
 const VEICOLI = [
-  {k:"monopattino", e:"🛴", nome:"Monopattino sfondato", tier:0, costo:0,   risp:0,  hype:0,  drip:0,  desc:"Il mezzo da NPC. Una ruota balla. Cringe, ma è quello che hai."},
-  {k:"bici",        e:"🚲", nome:"BMX da piazza",         tier:1, costo:60,  risp:3,  hype:2,  drip:3,  desc:"Meglio del monopattino. Almeno fai i bunny hop davanti alla crush."},
+  {k:"monopattino", e:"🛴", nome:"Monopattino Xiaomè sfondato", tier:0, costo:0,   risp:0,  hype:0,  drip:0,  desc:"Una ruota balla, l'app dice batteria 1%. Roba da NPC."},
+  {k:"bici",        e:"🚲", nome:"BMX / Graziella truccata",     tier:1, costo:60,  risp:3,  hype:2,  drip:3,  desc:"Meglio del monopattino. Almeno fai i bunny hop davanti alla crush."},
   {k:"scooter",     e:"🛵", nome:"Cinquantino truccato (Booster)", tier:2, costo:150, risp:8, hype:5, drip:5, desc:"Marmitta che sveglia il quartiere. Il primo vero flex."},
-  {k:"tmax",        e:"🏍️", nome:"Yamaha TMAX truccato",  tier:3, costo:280, risp:14, hype:12, drip:10, desc:"Il sogno di ogni maranza. Sgasi e la piazza si gira."},
-  {k:"macchina",    e:"🚗", nome:"BMW Serie 1 (a rate di papà)", tier:4, costo:500, risp:20, hype:18, drip:12, desc:"Marmitta finta, fari led, trap a palla. Il boss arriva così."},
+  {k:"tmax",        e:"🏍️", nome:"Yamaha TiMaxx truccato",       tier:3, costo:280, risp:14, hype:12, drip:10, desc:"Il sogno di ogni maranza. Sgasi e la piazza si gira."},
+  {k:"macchina",    e:"🚗", nome:"BiEmmeVu Serie 1 (a rate di papà)", tier:4, costo:500, risp:20, hype:18, drip:12, desc:"Marmitta finta, fari led, trap a palla. Il boss arriva così."},
 ];
 function veicoloAttuale(){ let best=VEICOLI[0]; for(const v of VEICOLI) if(S.veicoli[v.k] && v.tier>best.tier) best=v; return best; }
+
 
 /* crush selezionabili (parodia profili dating) */
 const CRUSH_M = [
@@ -653,15 +655,30 @@ const MATERIE = ["Educazione Fisica","Italiano","Matematica","Inglese","Storia",
 
 /* drip shop */
 const SHOP = [
-  {k:"tuta",     ic:"🧥", nome:"Tuta Nike Tech grigia", desc:"Il completo. Senza, non sei nessuno in piazza.", costo:120, drip:15, risp:6, hype:0},
-  {k:"tn",       ic:"👟", nome:"Scarpe TN (Air Max Plus)", desc:"Le uniche scarpe che esistono. Le altre sono ciabatte.", costo:160, drip:18, risp:4, hype:6},
-  {k:"borsello", ic:"👜", nome:"Borsello 'LV' del mercato", desc:"Tracolla obbligatoria. Dentro: una gomma e il vape.", costo:40, drip:8, risp:0, hype:0},
-  {k:"piumino",  ic:"🧣", nome:"Piumino Moncler taroccato", desc:"Caldo e flexoso. Si stacca la toppa ma scialla.", costo:90, drip:12, risp:4, hype:0},
-  {k:"cappello", ic:"🧢", nome:"Cappellino visiera piatta", desc:"Etichetta lasciata su, ovviamente.", costo:25, drip:5, risp:2, hype:0},
-  {k:"catena",   ic:"📿", nome:"Catena dorata pesante", desc:"Oro 9 carati di Instagram. Brilla come l'oro vero, quasi.", costo:35, drip:6, risp:0, hype:5},
-  {k:"profumo",  ic:"🧴", nome:"Profumo (mezza boccetta addosso)", desc:"Ti sentono prima che entri. Forse troppo.", costo:30, drip:0, risp:-3, hype:4},
-  {k:"ea7",      ic:"🐉", nome:"Felpa EA7", desc:"L'aquila sul petto. Roba seria, fra.", costo:140, drip:16, risp:5, hype:2},
+  // --- FIT (vestiti) ---
+  {k:"tuta",        cat:"fit", ic:"🧥", nome:"Tuta Nikee Tech grigia", desc:"Il completo. Senza, in piazza non esisti.", costo:120, drip:15, risp:6, hype:0},
+  {k:"tn",          cat:"fit", ic:"👟", nome:"Scarpe TN (Nikee Air Max Plus)", desc:"Le uniche scarpe che esistono. Le altre sono ciabatte.", costo:160, drip:18, risp:4, hype:6},
+  {k:"stonedisland",cat:"fit", ic:"🧭", nome:"Felpa Stoned Island", desc:"La toppa col compasso si gira da sola. Roba seria, quasi.", costo:130, drip:14, risp:6, hype:0},
+  {k:"cortesia",    cat:"fit", ic:"👕", nome:"Felpa Cortesia", desc:"«Domina il mondo». Beh, il quartiere.", costo:110, drip:12, risp:4, hype:4},
+  {k:"piumino",     cat:"fit", ic:"🧣", nome:"Piumino Moncler del Temù", desc:"Caldo e flexoso. La toppa si stacca ma scialla.", costo:90, drip:12, risp:4, hype:0},
+  {k:"nb550",       cat:"fit", ic:"👟", nome:"New Bilancia 550", desc:"Le scarpe di tuo padre, tornate fighe per sbaglio.", costo:120, drip:13, risp:3, hype:3},
+  {k:"salomon",     cat:"fit", ic:"🥾", nome:"Scarpe Salomòn", desc:"Pronto per il Monte Rosa. Destinazione: centro commerciale.", costo:150, drip:14, risp:2, hype:4},
+  {k:"ea7",         cat:"fit", ic:"🐉", nome:"Felpa EA7 (aquila taroccata)", desc:"L'aquila sul petto guarda da due parti diverse.", costo:140, drip:16, risp:5, hype:2},
+  {k:"cappello",    cat:"fit", ic:"🧢", nome:"Cappellino visiera piatta", desc:"Etichetta lasciata su, ovviamente.", costo:25, drip:5, risp:2, hype:0},
+  {k:"catena",      cat:"fit", ic:"📿", nome:"Catena dorata pesante", desc:"Oro 9 carati di Instagram. Brilla quasi come quello vero.", costo:35, drip:6, risp:0, hype:5},
+  {k:"borsello",    cat:"fit", ic:"👜", nome:"Borsello 'Luigi Vutton' del mercato", desc:"Tracolla obbligatoria. Dentro: il vape e una gomma.", costo:40, drip:8, risp:0, hype:0},
+  {k:"profumo",     cat:"fit", ic:"🧴", nome:"Profumo (mezza boccetta addosso)", desc:"Ti sentono prima che entri. Forse troppo.", costo:30, drip:0, risp:-3, hype:4},
+  // --- TABACCHERIA (svapo) ---
+  {k:"elfbarbah",   cat:"vape", ic:"🩼", nome:"Elf Barbah 12.000 tiri", desc:"Gusto «anguria ghiaccio guerriero». Lo svapo non fa fumo, fa nuvola. La nuvola fa estetica. — Min. del Vibe.", costo:20, drip:5, risp:2, hype:6},
+  {k:"lostmaria",   cat:"vape", ic:"💨", nome:"Lost Maria", desc:"Ti perde anche l'anima, ma che nuvole, fra.", costo:22, drip:4, risp:0, hype:6},
+  {k:"puffdaddy",   cat:"vape", ic:"🌬️", nome:"Puff Daddy 5000", desc:"5000 tiri di pura estetica. Sa di caramella e rimpianto.", costo:28, drip:6, risp:0, hype:7},
+  // --- GADGET / TECH / COLLEZIONE ---
+  {k:"lababbo",     cat:"gadget", ic:"🧸", nome:"Lababbo", desc:"Pupazzetto brutto da 80€ da attaccare al borsello per flexare.", costo:80, drip:9, risp:0, hype:10},
+  {k:"stenli",      cat:"gadget", ic:"🥤", nome:"Stenli Cup gigante", desc:"Bicchierone da 1,2 litri ovunque, anche se bevi solo energy.", costo:40, drip:6, risp:0, hype:7},
+  {k:"ariapods",    cat:"gadget", ic:"🎧", nome:"AriaPods Max", desc:"600€ di cuffie per sentire la drill rigorosamente in mono.", costo:160, drip:10, risp:3, hype:8},
+  {k:"aifon",       cat:"gadget", ic:"📱", nome:"aiFon 17 Pro Max Ultra", desc:"Schermo sfondato, ma è un iPhone, quindi tutto ok.", costo:200, drip:8, risp:6, hype:10},
 ];
+
 
 /* ============ RANK ============ */
 function score(){ return S.rispetto*0.32 + S.hype*0.30 + S.drip*0.24 + S.studio*0.14; }
@@ -806,6 +823,20 @@ const EVENTI = [
   {ic:"🛵", t:"Contro l'auto del prof", b:"Col motorino di un amico ti scontri contro la macchina del prof di {mat}. Danni e figuraccia.", d:{grana:-20}, mat:-2},
   {ic:"🤬", t:"Offesa alla madre del prof", b:"Offendi la moralità della madre del prof di {mat}. Lui non gradisce, la piazza sì.", d:{rispetto:5}, mat:-2},
   {ic:"🍺", t:"Tabboz News", b:"Litighi con uno al bar, fai dei commenti su una tipa, lei si gira... ed è tua cugina. <i>Disastro.</i>", d:{rispetto:-4, hype:-3}},
+
+  /* ===== parodie 2026: mode e tendenze attuali, stile Bonomi 30 anni dopo ===== */
+  {ic:"🧠", t:"Brainrot acuto", b:"Passi 4 ore a guardare brainrot. Ora il cervello fa solo «Tralalero Tralala». <i>Hype su, neuroni giù.</i>", d:{hype:8}, mat:-1},
+  {ic:"🦈", t:"Tung Tung Sahur", b:"«Tung Tung Tung Sahur» ti perseguita nei sogni. Dormi malissimo, fra.", d:{hype:-4}},
+  {ic:"🐊", t:"Bombardiro Crocodilo", b:"Posti un edit di Bombardiro Crocodilo e fa il botto. Brainrot = hype.", d:{hype:10}},
+  {ic:"🧃", t:"Crime Hydration", b:"Trovi una Crime Hydration introvabile e la rivendi a 40€. <i>Imprenditore nato.</i>", d:{grana:40, hype:3}},
+  {ic:"🍫", t:"Cioccolato di Druby", b:"Compri il cioccolato di Druby a 25€ la barretta di pistacchio. Buono, ma sei in bolletta.", d:{grana:-25, hype:5}},
+  {ic:"🍵", t:"Matcha per la storia", b:"Ti fai il matcha latte per la storia. Sa di erba bagnata, ma l'estetica è servita.", d:{hype:5}},
+  {ic:"😈", t:"Mostro Energy", b:"Ti scoli un Mostro Energy e diventi iperattivo. Parli a 200 all'ora per due ore.", d:{hype:4, rispetto:2}},
+  {ic:"🤖", t:"ChatGippiti fa i compiti", b:"Fai fare il compito di {mat} a ChatGippiti. Voto su... almeno finché non ti sgamano.", d:{}, mat:2},
+  {ic:"🧊", t:"Stenli salvavita", b:"Cade il tuo Stenli da 1,2L: non si rompe e dentro c'è ancora ghiaccio di ieri. <i>Iconico.</i>", d:{hype:4}},
+  {ic:"🚗", t:"Tezla in autopilot", b:"Sali sulla Tezla di un amico in modalità autopilot. Lei guida, voi due NPC dietro a fare storie.", d:{hype:6}},
+  {ic:"🧸", t:"Lababbo esaurito", b:"Tutta la piazza ha il Lababbo nuovo, tu no. <i>Escluso dal trend, fra.</i>", d:{hype:-5}},
+  {ic:"🏛️", t:"Pubblicità Progresso", b:"Notifica del Ministero: «Posa il telefono ed esci di casa.» Tu apri TikTok. <i>Sponsorizzata da Obscura Truckware.</i>", d:{}},
 ];
 function eventoCasuale(cb){
   const e = EVENTI[random(EVENTI.length)];
@@ -1047,7 +1078,7 @@ function viewDrip(){
     ? `<div class="owned">${owned.map(it=>`<span class="badge">${it.ic} <b>${it.nome.split(" ")[0]}</b></span>`).join("")}</div>`
     : `<div class="note">Armadio vuoto, fra. Senza drip in piazza sei un NPC.</div>`;
 
-  const items = SHOP.map(it=>{
+  const cardOf = it=>{
     const have=S.dr[it.k];
     const aff=S.grana>=it.costo;
     const tags=[`<span class="tagc">${it.costo}€</span>`,`<span class="tagp">👟 +${it.drip}</span>`];
@@ -1061,7 +1092,8 @@ function viewDrip(){
           <div class="cost">${have?'<span class="tagp">Già nell\'armadio</span>':tags.join("")}</div>
         </div></div>
       </div>`;
-  }).join("");
+  };
+  const section = (cat,label)=>`<div class="eyebrow" style="margin:6px 0 8px">${label}</div>`+SHOP.filter(it=>it.cat===cat).map(cardOf).join("");
 
   return `
     <div class="eyebrow">Drip · livello ${S.drip}/100</div>
@@ -1069,8 +1101,9 @@ function viewDrip(){
     <p class="sub">Più drip = più rispetto e più hype, senza muovere un dito. Compra e indossa, fra.</p>
     <div class="dripChar">${characterSVG()}<div class="cap">${S.nome} · drip ${S.drip}/100</div></div>
     ${ownedHtml}
-    <div class="eyebrow" style="margin-bottom:8px">🛒 Negozio</div>
-    ${items}
+    ${section("fit","🛒 Fit / vestiti")}
+    ${section("vape","🩼 Tabaccheria / svapo")}
+    ${section("gadget","🧸 Gadget & tech")}
   `;
 }
 
@@ -1242,18 +1275,26 @@ function viewLavoro(){
       </div></div>
     </div>
 
+    <div class="card tap" data-act="rider">
+      <div class="cardrow"><div class="ai">🛵</div><div class="body">
+        <h3>Rider per Glovè</h3>
+        <p>Consegne in monopattino sotto la pioggia per "Just Heat". Paga, ma che cringe.</p>
+        <div class="cost"><span class="tagp">💶 +30</span><span class="tagn">🔥 -3</span></div>
+      </div></div>
+    </div>
+
     <div class="card tap" data-act="vinted">
       <div class="cardrow"><div class="ai">📦</div><div class="body">
-        <h3>Rivendi roba su Vinted</h3>
-        <p>Svuoti l'armadio vecchio. Tranquillo, nessuno ti vede.</p>
+        <h3>Dropshipping su Instagram</h3>
+        <p>Rivendi roba del Temù come fosse griffata. Tranquillo, nessuno controlla.</p>
         <div class="cost"><span class="tagp">💶 +28</span></div>
       </div></div>
     </div>
 
     <div class="card tap" data-act="magazzino">
       <div class="cardrow"><div class="ai">🏭</div><div class="body">
-        <h3>Magazzino weekend</h3>
-        <p>Faticata vera, ma porti a casa bei soldi. <i>Che sbatti però.</i></p>
+        <h3>Magazzino "Ti Sfrutto Bene Bene SpA"</h3>
+        <p>Turno tosto alla Iperbole Logistica. Schiena distrutta, ma bei soldi.</p>
         <div class="cost"><span class="tagp">💶 +45</span><span class="tagn">🔥 -2</span></div>
       </div></div>
     </div>
@@ -1397,9 +1438,10 @@ function azione(a){
     }
 
     /* lavoro */
+    case "rider":{ if(!spendi()){renderHUD();return;} const dd=applica({grana:30,rispetto:-3}); play("confirm"); renderHUD(); popup("🛵","Rider per Glovè","Consegne sotto la pioggia in monopattino. Mance zero, dignità idem, ma la grana arriva.",dd,()=>eventoCasuale(()=>render())); return; }
     case "volantini":{ if(!spendi()){renderHUD();return;} const dd=applica({grana:18,rispetto:-3}); play("confirm"); renderHUD(); popup("📰","Volantinaggio","Due ore di pizza al taglio porta a porta. Pochi soldi ma sicuri.",dd,()=>eventoCasuale(()=>render())); return; }
-    case "vinted":{ if(!spendi()){renderHUD();return;} const dd=applica({grana:28}); play("confirm"); renderHUD(); popup("📦","Vinted","Hai venduto la roba vecchia. Grana in tasca, nessuno l'ha vista.",dd,()=>render()); return; }
-    case "magazzino":{ if(!spendi()){renderHUD();return;} const dd=applica({grana:45,rispetto:-2}); play("confirm"); renderHUD(); popup("🏭","Magazzino","Turno tosto a spostare scatole. Schiena distrutta, ma bei soldi.",dd,()=>eventoCasuale(()=>render())); return; }
+    case "vinted":{ if(!spendi()){renderHUD();return;} const dd=applica({grana:28}); play("confirm"); renderHUD(); popup("📦","Dropshipping","Hai venduto roba del Temù come fosse griffata. Grana in tasca, scrupoli zero.",dd,()=>render()); return; }
+    case "magazzino":{ if(!spendi()){renderHUD();return;} const dd=applica({grana:45,rispetto:-2}); play("confirm"); renderHUD(); popup("🏭","Magazzino","Turno tosto alla «Ti Sfrutto Bene Bene». Schiena distrutta, ma bei soldi.",dd,()=>eventoCasuale(()=>render())); return; }
     case "buttafuori":{ if(S.rispetto<40){toast("Serve Rispetto ≥40",true);return;} if(!spendi()){renderHUD();return;} const dd=applica({grana:55,rispetto:5}); play("confirm"); renderHUD(); popup("🕶️","Buttafuori","All'ingresso del privè. Ti conoscono, ti rispettano, ti pagano. <i>Capo.</i>",dd,()=>render()); return; }
 
     /* crush */
