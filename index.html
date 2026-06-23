@@ -83,6 +83,18 @@ body{
 /* ---- HUD stat in alto ---- */
 .hud{padding:14px 14px 10px; padding-top:max(14px, env(safe-area-inset-top)); background:linear-gradient(180deg,rgba(20,26,51,.95),rgba(20,26,51,.55)); border-bottom:1px solid var(--line); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); z-index:5;}
 .muteb{border:1px solid var(--line); background:var(--surface); color:var(--txt); width:34px; height:34px; border-radius:10px; font-size:15px; cursor:pointer; flex:0 0 auto;}
+
+/* ---- personaggio maranza ---- */
+#charCorner{position:absolute; left:6px; bottom:calc(62px + env(safe-area-inset-bottom)); width:74px; z-index:6; pointer-events:none; filter:drop-shadow(0 5px 8px rgba(0,0,0,.55));}
+#charCorner svg{width:100%; height:auto; display:block;}
+#charCorner .ctag{font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--lime); text-align:center; background:rgba(10,14,31,.7); border-radius:6px; padding:1px 0; margin-top:-4px;}
+.dripChar{display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--surface); border:1px dashed var(--line); border-radius:16px; padding:10px; margin-bottom:14px;}
+.dripChar svg{width:120px; height:auto;}
+.dripChar .cap{font-size:11px; color:var(--dim);}
+
+/* ---- pannello fumetto (morte) ---- */
+.comicWrap{width:100%; max-width:330px; margin:0 auto 14px; border:3px solid #141414; border-radius:8px; overflow:hidden; box-shadow:6px 6px 0 rgba(0,0,0,.5);}
+.comicWrap svg{width:100%; height:auto; display:block;}
 .hud-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
 .who{display:flex; align-items:center; gap:10px; min-width:0;}
 .ava{width:42px; height:42px; border-radius:12px; display:grid; place-items:center; font-size:22px;
@@ -219,6 +231,21 @@ h2.title{font-family:var(--disp); font-size:30px; line-height:.95; margin:2px 0 
 </style>
 </head>
 <body>
+<!-- defs grafici condivisi: filtro "inchiostro tremolante" (look fumetto) + retino halftone -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="inkRough" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="7" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="inkRoughS" x="-6%" y="-6%" width="112%" height="112%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="1.7" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <pattern id="halftone" width="9" height="9" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1.3" fill="#141414"/>
+  </pattern>
+</defs></svg>
+
 <div class="phone" id="phone">
 
   <!-- HUD -->
@@ -252,6 +279,9 @@ h2.title{font-family:var(--disp); font-size:30px; line-height:.95; margin:2px 0 
 
   <!-- SCHERMO -->
   <div class="screen" id="screen" style="display:none"></div>
+
+  <!-- PERSONAGGIO NELL'ANGOLO (si veste man mano) -->
+  <div id="charCorner" style="display:none"></div>
 
   <!-- TAB BAR -->
   <div class="tabs" id="tabs" style="display:none">
@@ -303,6 +333,9 @@ h2.title{font-family:var(--disp); font-size:30px; line-height:.95; margin:2px 0 
   <!-- SFIDA FINALE -->
   <div class="overlay hide" id="boss"></div>
 
+  <!-- MORTE DEMENZIALE (game over casuale) -->
+  <div class="overlay hide" id="death"></div>
+
   <!-- GAME OVER -->
   <div class="overlay hide" id="end">
     <div class="endbig" id="endTitle">Fine del mese</div>
@@ -341,6 +374,105 @@ function play(name){
   if(muted || !AC || !BUF[name]) return;
   try{ if(AC.state==="suspended") AC.resume();
        const s=AC.createBufferSource(); s.buffer=BUF[name]; s.connect(AC.destination); s.start(0);
+  }catch(e){}
+}
+
+/* ---- sintesi procedurale (no file): suoni demenziali ---- */
+let _nb=null;
+function noiseBuffer(){ if(_nb) return _nb; const len=Math.floor(AC.sampleRate*1.2); const b=AC.createBuffer(1,len,AC.sampleRate); const d=b.getChannelData(0); for(let i=0;i<len;i++) d[i]=Math.random()*2-1; return _nb=b; }
+function _tone(type,f,t,dur,peak,dest,detune){
+  const o=AC.createOscillator(), g=AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t); if(detune) o.detune.setValueAtTime(detune,t);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(peak,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(dest||AC.destination);
+  o.start(t); o.stop(t+dur+0.03);
+}
+function audioReady(){ if(muted||!AC) return false; try{ if(AC.state==="suspended") AC.resume(); }catch(e){} return true; }
+
+/* trap orribile e stonata — MORTE */
+function sfxTrap(){ if(!audioReady())return; try{
+  const t=AC.currentTime, m=AC.createGain(); m.gain.value=0.5; m.connect(AC.destination);
+  [0,0.55,1.1,1.65,2.0].forEach(b=>{ const o=AC.createOscillator(),g=AC.createGain(); o.type="sine";
+    o.frequency.setValueAtTime(120,t+b); o.frequency.exponentialRampToValueAtTime(45,t+b+0.25);
+    g.gain.setValueAtTime(0.9,t+b); g.gain.exponentialRampToValueAtTime(0.001,t+b+0.45);
+    o.connect(g).connect(m); o.start(t+b); o.stop(t+b+0.5); });
+  for(let i=0;i<16;i++){ const s=AC.createBufferSource(); s.buffer=noiseBuffer();
+    const hp=AC.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=7000;
+    const g=AC.createGain(); const tt=t+i*0.137, lvl=(i%4===2)?0.12:0.06;
+    g.gain.setValueAtTime(lvl,tt); g.gain.exponentialRampToValueAtTime(0.001,tt+0.05);
+    s.connect(hp).connect(g).connect(m); s.start(tt); s.stop(tt+0.06); }
+  [330,349,330,277,311,330,247].forEach((f,i)=>_tone("square",f,t+0.1+i*0.3,0.26,0.10,m,(i%2?18:-24)));
+}catch(e){} }
+
+/* accordo morbido "suadente 2020" — TIPA */
+function sfxSuadente(){ if(!audioReady())return; try{
+  const t=AC.currentTime, lp=AC.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=1600;
+  const m=AC.createGain(); m.gain.value=0.32; lp.connect(m); m.connect(AC.destination);
+  [220,261.6,329.6,392,493.9].forEach((f,i)=>{ const o=AC.createOscillator(),g=AC.createGain();
+    o.type=i<2?"sine":"triangle"; o.frequency.value=f; o.detune.value=Math.random()*8-4;
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.2,t+0.4); g.gain.linearRampToValueAtTime(0.0001,t+1.8);
+    o.connect(g).connect(lp); o.start(t); o.stop(t+1.9); });
+  [523,659,784].forEach((f,i)=>_tone("sine",f,t+0.3+i*0.18,0.5,0.09,lp));
+}catch(e){} }
+
+/* stinger da film di mafia (strumentale) — MINACCIA AI PROF */
+function sfxPacino(){ if(!audioReady())return; try{
+  const t=AC.currentTime, m=AC.createGain(); m.gain.value=0.4;
+  const lp=AC.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=900; lp.connect(m); m.connect(AC.destination);
+  const o=AC.createOscillator(),g=AC.createGain(); o.type="sine"; o.frequency.setValueAtTime(90,t); o.frequency.exponentialRampToValueAtTime(45,t+0.4);
+  g.gain.setValueAtTime(0.9,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.6); o.connect(g).connect(m); o.start(t); o.stop(t+0.7);
+  [110,130.8,164.8].forEach(f=>_tone("sawtooth",f,t+0.05,0.7,0.12,lp));
+  [116.5,138.6,174.6].forEach(f=>_tone("sawtooth",f,t+0.75,0.9,0.12,lp));
+}catch(e){} }
+
+/* scorreggetta di motorino — BMW (ironico) */
+function sfxFart(){ if(!audioReady())return; try{
+  const t=AC.currentTime, m=AC.createGain(); m.gain.value=0.4; m.connect(AC.destination);
+  let tt=t;
+  for(let i=0;i<10;i++){ const f=Math.max(50,90-i*4+(Math.random()*10-5));
+    const o=AC.createOscillator(),g=AC.createGain(); o.type=(i%2?"square":"sawtooth"); o.frequency.value=f;
+    const dur=0.05+Math.random()*0.05;
+    g.gain.setValueAtTime(0.0001,tt); g.gain.exponentialRampToValueAtTime(0.25,tt+0.005); g.gain.exponentialRampToValueAtTime(0.001,tt+dur);
+    o.connect(g).connect(m); o.start(tt); o.stop(tt+dur+0.02);
+    tt += dur+0.02+Math.random()*0.03; }
+}catch(e){} }
+
+/* urlo di F1 — MONOPATTINO (ironico) */
+function sfxF1(){ if(!audioReady())return; try{
+  const t=AC.currentTime, m=AC.createGain(); m.gain.value=0.28;
+  const bp=AC.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=900; bp.Q.value=2; bp.connect(m); m.connect(AC.destination);
+  [0,12].forEach(det=>{ const o=AC.createOscillator(),g=AC.createGain(); o.type="sawtooth"; o.detune.value=det;
+    o.frequency.setValueAtTime(380,t); o.frequency.exponentialRampToValueAtTime(1500,t+0.7); o.frequency.exponentialRampToValueAtTime(700,t+1.3);
+    g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.3,t+0.1); g.gain.linearRampToValueAtTime(0.28,t+0.9); g.gain.exponentialRampToValueAtTime(0.001,t+1.4);
+    o.connect(g).connect(bp); o.start(t); o.stop(t+1.45); });
+}catch(e){} }
+
+/* suono del mezzo: F1 per il monopattino, scorreggetta per la BMW, motore normale per gli altri */
+function vehicleSound(k){
+  if(!k){ if(!S) return; k = veicoloAttuale().k; }
+  if(k==="monopattino") return sfxF1();
+  if(k==="macchina")    return sfxFart();
+  return play("scooter");
+}
+
+/* voci casuali: un insulto breve (~1% delle azioni), via sintesi vocale del dispositivo */
+const INSULTI = [
+  "Ma chi ti credi di essere, fra?","Sei un cringe pazzesco.","Hai lo stile di un comodino.",
+  "Wallah, che figura barbina.","Ma vai a studiare, va'.","Sei più finto del tuo Moncler.",
+  "Tutta tuta e zero sostanza.","Il TMAX ce l'hai a noleggio?","Maranza dei poveri.",
+  "Profumi come un taxi.","Bro, sei proprio un NPC.","Che L imbarazzante, fratm."
+];
+function randomInsult(){
+  if(muted) return;
+  try{
+    const ss = window.speechSynthesis; if(!ss) return;
+    const u = new SpeechSynthesisUtterance(INSULTI[random(INSULTI.length)]);
+    u.lang="it-IT"; u.rate=0.95+Math.random()*0.3; u.pitch=0.7+Math.random()*0.8; u.volume=0.9;
+    const vs = ss.getVoices().filter(v=>/it/i.test(v.lang));
+    if(vs.length) u.voice = vs[random(vs.length)];
+    ss.cancel(); ss.speak(u);
   }catch(e){}
 }
 
@@ -386,6 +518,135 @@ const CRUSH_F = [
 ];
 /* il rizz: quanto attiri. drip + hype, un po' di rispetto */
 function rizz(){ return clamp(Math.round(S.hype*0.4 + S.drip*0.4 + S.rispetto*0.2),0,100); }
+
+/* ============ MORTI DEMENZIALI (game over casuale) ============ */
+/* ~0.99% al giorno × ~29 giorni ⇒ in media ~1 partita su 4 finisce così */
+const DEATH_PER_DAY = 0.0099;
+const DEATHS = [
+  {emoji:"👮", ono:"MANI IN ALTO!", acc:"#4dc3ff", titolo:"DENTRO.", txt:"Senza alcun motivo insulti un carabiniere in piazza. Sei dentro prima ancora di finire la frase. <i>Scialla un par de mesi.</i>"},
+  {emoji:"🏗️", ono:"CRAAACK", acc:"#ffc93c", titolo:"SPIACE.", txt:"Ti arrampichi su un'impalcatura per fare il tag della vita. La gravità non perdona, fra. Ospedale, due mesi di gesso firmato dai prof."},
+  {emoji:"🌯", ono:"GLOM GLOM", acc:"#ff6a3d", titolo:"R.I.P. KEBAB.", txt:"Challenge TikTok: 40 panzerotti in 3 minuti. Diventi virale. Purtroppo da fermo, in senso definitivo."},
+  {emoji:"🛵", ono:"SGOMMM", acc:"#ff2d7e", titolo:"WHEELIE ETERNO.", txt:"Provi l'impennata col TMAX in tangenziale per il reel. Atterri direttamente nei meme. <i>Edit con la musica triste.</i>"},
+  {emoji:"🌊", ono:"SPLASH", acc:"#4dc3ff", titolo:"DISPERSO.", txt:"Ti tuffi nel Naviglio per un trend. Ti ritrovano tre giorni dopo a Pavia, ancora con la tuta tecnica addosso."},
+  {emoji:"🧴", ono:"PSSSHHH", acc:"#c6ff3d", titolo:"ASFISSIA DA AXE.", txt:"Svuoti l'intera boccetta di deodorante in ascensore. L'ascensore diventa una camera a gas profumata. Bella figura fino alla fine."},
+  {emoji:"🐗", ono:"GROINK", acc:"#ff6a3d", titolo:"1-0 PER IL CINGHIALE.", txt:"Sfidi un cinghiale a Roma per il contenuto. Lui aveva più seguito e più stazza. <i>Game over, fratm.</i>"},
+  {emoji:"🚄", ono:"VRUUUM", acc:"#4dc3ff", titolo:"TRAIN SURFING.", txt:"Fai surf sul tetto del Frecciarossa. Il treno arriva a Napoli in orario. Tu no."},
+  {emoji:"🔊", ono:"UNZ UNZ UNZ", acc:"#ff2d7e", titolo:"BPM TROPPO ALTI.", txt:"Rave illegale, 72 ore di balletto no-stop. Il cuore chiede il cambio turno e se ne va. <i>Sempre in para.</i>"},
+  {emoji:"🚗", ono:"...SBAM", acc:"#ff4d62", titolo:"ROSSO, FRA.", txt:"Attraversi col rosso mentre giri una storia. Il SUV non era taggato nel video. Fine delle riprese."},
+  {emoji:"🥪", ono:"BLEAH", acc:"#c6ff3d", titolo:"AUTOGRILL FATALE.", txt:"Tramezzino scaduto da prima del Covid. La salmonella ti elegge suo campione regionale. Vinci postumo."},
+  {emoji:"🍄", ono:"HUEEE", acc:"#c6ff3d", titolo:"VIAGGIO SOLA ANDATA.", txt:"Trovi un fungo al parco «che sembrava buono». Parti per una dimensione da cui non si torna. <i>Scialla nell'aldilà.</i>"},
+  {emoji:"⛽", ono:"BOOOM", acc:"#ff6a3d", titolo:"PIENO COMPLETO.", txt:"Fai benzina al TMAX col telefono acceso e la sigaretta in bocca. La pompa apprezza pochissimo. Boom."},
+  {emoji:"🐻", ono:"GRRR", acc:"#ffc93c", titolo:"ORSO 1, MARANZA 0.", txt:"Sfidi l'orso del Trentino a braccio di ferro per scommessa. Lui bara coi muscoli. Tu non barerai mai più."},
+  {emoji:"🛴", ono:"DLEN", acc:"#4dc3ff", titolo:"FURTO FALLITO.", txt:"Provi a rubare un monopattino elettrico, ma è ancora agganciato. Parti tu, non lui. Direzione: muro."},
+  {emoji:"☀️", ono:"ZZZ...", acc:"#ffc93c", titolo:"COTTO AL CARTOCCIO.", txt:"Ti addormenti in spiaggia a Riccione con la tuta nera tecnica a mezzogiorno. Cottura uniforme, ben fatta."},
+  {emoji:"📹", ono:"NO SIGNAL", acc:"#ff2d7e", titolo:"DIRETTA INTERROTTA.", txt:"Guidi bendato in diretta per una scommessa coi follower. La diretta finisce. Anche il resto."},
+  {emoji:"🐦", ono:"SQUAWK", acc:"#c6ff3d", titolo:"GABBIANO 1.", txt:"A Venezia litighi con un gabbiano per una michetta. Sottovaluti il gabbiano. Errore comune, errore ultimo."},
+  {emoji:"🔗", ono:"CLICK", acc:"#ffc93c", titolo:"INCATENATO.", txt:"Ti incateni a un palo per una challenge e perdi la chiave nel tombino. Ti ritrovano statua del quartiere."},
+  {emoji:"⚡", ono:"BDUM BDUM", acc:"#ff4d62", titolo:"OVERDOSE DI ENERGY.", txt:"14 lattine di Red Devil per studiare la sera prima dell'interrogazione. Il cuore fa 300 bpm e poi sciopera."},
+  {emoji:"🏚️", ono:"SCRICCHH", acc:"#ff6a3d", titolo:"PARKOUR FINALE.", txt:"Fuggi dal controllore facendo parkour sui tetti. Tu sai fare parkour. Il tetto del 1920 no."},
+  {emoji:"🦟", ono:"BZZZ", acc:"#c6ff3d", titolo:"NEMICO INVISIBILE.", txt:"Zanzara coreana, tu in canotta a flexare d'estate. Tre punture dopo, leggenda del quartiere. <i>Riposa, bomber.</i>"},
+];
+
+/* ============ PERSONAGGIO (paper-doll che si veste) ============ */
+function characterSVG(){
+  const d=S.dr, fem=(S.sesso==="F"), L="#161616", sk="#f1c8a4";
+  const P=[];
+  const pant = d.tuta ? "#9aa0aa" : "#2a2e39";
+  P.push(`<rect x="56" y="120" width="12" height="56" rx="5" fill="${pant}" stroke="${L}" stroke-width="3"/>`);
+  P.push(`<rect x="72" y="120" width="12" height="56" rx="5" fill="${pant}" stroke="${L}" stroke-width="3"/>`);
+  if(d.tuta){ P.push(`<line x1="57" y1="123" x2="57" y2="172" stroke="#eef0f3" stroke-width="2"/><line x1="83" y1="123" x2="83" y2="172" stroke="#eef0f3" stroke-width="2"/>`); }
+  // scarpe
+  const shoe = d.tn ? "#f5f5f5" : "#1e1e1e";
+  P.push(`<path d="M50 176 h18 v7 q0 5 -6 5 h-14 q-4 0 -4 -5 z" fill="${shoe}" stroke="${L}" stroke-width="3"/>`);
+  P.push(`<path d="M72 176 h18 v7 q0 5 -6 5 h-14 q-4 0 -4 -5 z" fill="${shoe}" stroke="${L}" stroke-width="3"/>`);
+  if(d.tn){ P.push(`<path d="M49 184 l15 -3 M71 184 l15 -3" stroke="#ff2d7e" stroke-width="3"/>`); }
+  // braccia
+  const sleeve = d.ea7 ? "#1c2747" : (d.piumino ? "#b5232b" : (d.tuta ? "#9aa0aa" : sk));
+  P.push(`<rect x="40" y="74" width="10" height="44" rx="5" fill="${sleeve}" stroke="${L}" stroke-width="3"/>`);
+  P.push(`<rect x="90" y="74" width="10" height="44" rx="5" fill="${sleeve}" stroke="${L}" stroke-width="3"/>`);
+  P.push(`<circle cx="45" cy="120" r="5" fill="${sk}" stroke="${L}" stroke-width="3"/><circle cx="95" cy="120" r="5" fill="${sk}" stroke="${L}" stroke-width="3"/>`);
+  // torso
+  let torso="#f2f2f2"; if(d.tuta) torso="#9aa0aa"; if(d.ea7) torso="#1c2747"; if(d.piumino) torso="#b5232b";
+  P.push(`<path d="M48 72 q22 -8 44 0 v46 q-22 6 -44 0 z" fill="${torso}" stroke="${L}" stroke-width="3"/>`);
+  if(d.piumino){ P.push(`<line x1="50" y1="86" x2="90" y2="86" stroke="${L}" stroke-width="2"/><line x1="50" y1="100" x2="90" y2="100" stroke="${L}" stroke-width="2"/>`); }
+  if(d.tuta && !d.ea7 && !d.piumino){ P.push(`<line x1="70" y1="74" x2="70" y2="116" stroke="${L}" stroke-width="2"/><path d="M55 86 q6 -4 11 1 q-7 -1 -11 2z" fill="${L}"/>`); }
+  if(d.ea7){ P.push(`<path d="M64 90 l6 -7 l6 7 l-6 -2 z" fill="#cfae5a"/>`); }
+  if(d.borsello){ P.push(`<line x1="50" y1="71" x2="88" y2="112" stroke="#6a4a2a" stroke-width="4"/><rect x="84" y="104" width="14" height="12" rx="3" fill="#7a5230" stroke="${L}" stroke-width="2"/>`); }
+  if(d.catena){ P.push(`<path d="M60 70 q10 14 20 0" fill="none" stroke="#ffc93c" stroke-width="3" stroke-dasharray="2 2"/>`); }
+  // collo + testa
+  P.push(`<rect x="64" y="62" width="12" height="12" fill="${sk}" stroke="${L}" stroke-width="3"/>`);
+  P.push(`<circle cx="70" cy="44" r="22" fill="${sk}" stroke="${L}" stroke-width="3"/>`);
+  // capelli / cappello
+  if(d.cappello){
+    P.push(`<path d="M48 38 q22 -22 44 0 q2 4 -2 5 h-40 q-4 -1 -2 -5z" fill="#171a2b" stroke="${L}" stroke-width="3"/>`);
+    P.push(`<rect x="43" y="40" width="54" height="5" rx="2" fill="#171a2b" stroke="${L}" stroke-width="2"/>`);
+    P.push(`<rect x="70" y="40" width="10" height="4" fill="#ff2d7e"/>`);
+  } else if(fem){
+    P.push(`<path d="M48 40 q22 -30 44 0 q4 30 -6 42 q-2 -27 -16 -29 q-14 2 -16 29 q-10 -12 -6 -42z" fill="#241c16" stroke="${L}" stroke-width="3"/>`);
+  } else {
+    P.push(`<path d="M50 40 q20 -26 40 0 q-4 -9 -20 -9 q-16 0 -20 9z" fill="#1d1a17" stroke="${L}" stroke-width="3"/>`);
+    P.push(`<path d="M50 40 q-3 6 -1 10 M90 40 q3 6 1 10" fill="none" stroke="${L}" stroke-width="2"/>`);
+  }
+  // faccia
+  if(S.drip>=45){
+    P.push(`<rect x="55" y="40" width="13" height="8" rx="2" fill="#111" stroke="${L}" stroke-width="2"/><rect x="72" y="40" width="13" height="8" rx="2" fill="#111" stroke="${L}" stroke-width="2"/><line x1="68" y1="43" x2="72" y2="43" stroke="${L}" stroke-width="2"/>`);
+  } else {
+    P.push(`<circle cx="62" cy="44" r="2.2" fill="${L}"/><circle cx="78" cy="44" r="2.2" fill="${L}"/><path d="M58 38 q4 -2 8 0 M74 38 q4 -2 8 0" fill="none" stroke="${L}" stroke-width="2"/>`);
+  }
+  P.push(`<path d="M62 54 q8 5 16 0" fill="none" stroke="${L}" stroke-width="2.5"/>`);
+  if(d.profumo){ P.push(`<g stroke="#7bd3a0" stroke-width="2" fill="none" opacity="0.9"><path d="M98 50 q8 -6 4 -14"/><path d="M104 62 q10 -5 8 -15"/></g><text x="100" y="40" font-size="11">✨</text>`); }
+  return `<svg viewBox="0 0 140 198" xmlns="http://www.w3.org/2000/svg"><g filter="url(#inkRoughS)">${P.join("")}</g></svg>`;
+}
+function renderChar(){ const c=$("charCorner"); if(c) c.innerHTML = characterSVG() + `<div class="ctag">${S.nome}</div>`; }
+
+/* ============ PANNELLO FUMETTO (morte) ============ */
+function burst(){
+  const cx=160, cy=132, n=13; let p="";
+  for(let i=0;i<n*2;i++){
+    const r=(i%2)?56:96, a=Math.PI*i/n;
+    const x=cx+Math.cos(a)*r, y=cy+Math.sin(a)*r*0.8;
+    p += (i?"L":"M") + x.toFixed(0)+" "+y.toFixed(0)+" ";
+  }
+  return p+"Z";
+}
+function comicPanel(ev){
+  const acc = ev.acc || "#ff2d7e";
+  return `<svg viewBox="0 0 320 264" xmlns="http://www.w3.org/2000/svg">
+    <rect width="320" height="264" fill="#f4f1e8"/>
+    <rect width="320" height="264" fill="url(#halftone)" opacity="0.45"/>
+    <g filter="url(#inkRough)" stroke="#141414" fill="none">
+      <rect x="7" y="7" width="306" height="250" stroke-width="6"/>
+      <g stroke-width="3" opacity="0.8">
+        <line x1="160" y1="132" x2="40" y2="38"/><line x1="160" y1="132" x2="288" y2="34"/>
+        <line x1="160" y1="132" x2="26" y2="150"/><line x1="160" y1="132" x2="298" y2="150"/>
+        <line x1="160" y1="132" x2="58" y2="238"/><line x1="160" y1="132" x2="268" y2="240"/>
+      </g>
+    </g>
+    <path d="${burst()}" fill="${acc}" opacity="0.92" stroke="#141414" stroke-width="4"/>
+    <text x="160" y="170" font-size="104" text-anchor="middle">${ev.emoji}</text>
+    <g transform="rotate(-8 160 58)"><text x="160" y="72" font-family="Anton, Impact, sans-serif" font-size="56" text-anchor="middle" fill="${acc}" stroke="#141414" stroke-width="4" paint-order="stroke">${ev.ono}</text></g>
+    <g transform="rotate(12 268 230)"><rect x="230" y="212" width="76" height="34" rx="4" fill="none" stroke="#c0202d" stroke-width="4"/><text x="268" y="237" font-family="Anton, Impact, sans-serif" font-size="22" text-anchor="middle" fill="#c0202d">R.I.P.</text></g>
+  </svg>`;
+}
+function morteImprovvisa(){
+  S.over=true; sfxTrap();
+  const ev = DEATHS[random(DEATHS.length)];
+  const dv = $("death");
+  dv.innerHTML = `
+    <div class="bossEye" style="margin-top:6px">☠️ Morte improvvisa e demenziale</div>
+    <div class="comicWrap">${comicPanel(ev)}</div>
+    <div class="endbig" style="text-align:center; font-size:34px">${ev.titolo}</div>
+    <p class="sub" style="text-align:center; margin:6px 0 14px">${ev.txt}</p>
+    <div class="endcard">
+      <div class="row"><span>⚰️ Riposa in piazza</span><b>${S.nome}</b></div>
+      <div class="row"><span>📅 Giorni di gloria</span><b>${S.giorno}</b></div>
+      <div class="row"><span>🏆 Rank al decesso</span><b>${rank().n}</b></div>
+      <div class="row"><span>👟 Drip sprecato</span><b>${S.drip}/100</b></div>
+    </div>
+    <button class="btn btn-lime" id="deathAgain" style="margin-top:auto">Reincarnati e riprova →</button>
+  `;
+  dv.classList.remove("hide");
+}
 
 /* materie scolastiche (parodia istituto) */
 const MATERIE = ["Educazione Fisica","Italiano","Matematica","Inglese","Storia","Tecnologia","Diritto","Arte","Religione"];
@@ -503,6 +764,11 @@ const EVENTI = [
   {ic:"📉", t:"Preso una L", b:"Provi a fare il sigma ma rispondi dopo 4 secondi. Sgamato come delulu.", d:{rispetto:-4}},
   {ic:"🧢", t:"Edit virale", b:"Un edit tuo finisce in una pagina maranza da 100k follower. <i>Based, fra.</i>", d:{hype:10, rispetto:4}},
   {ic:"🥶", t:"Outfit sgamato", b:"Uno nota che la toppa Moncler è storta. «Ma è taroccato?» Cala il silenzio.", d:{drip:-6, rispetto:-3}},
+  {ic:"🦅", t:"Profezia del nonno", b:"Tuo nonno ti vede in tuta e dice «ai miei tempi si lavorava». Ti dà 30€ per il disturbo.", d:{grana:30}},
+  {ic:"🛒", t:"Carrello impazzito", b:"Fai a gara coi carrelli all'Esselunga. Vinci tu, ma rompi una piramide di tonno. Leggenda locale.", d:{rispetto:7, hype:5}},
+  {ic:"📚", t:"Interrogazione a sorpresa", b:"La prof ti interroga proprio mentre stavi flexando. Figura da NPC totale.", d:{rispetto:-4, hype:-4}},
+  {ic:"🍝", t:"Carbonara con la panna", b:"Posti una storia con la carbonara alla panna. L'Italia intera ti ratio nei commenti.", d:{hype:-8, rispetto:-3}},
+  {ic:"💪", t:"Pump in palestra", b:"Day di petto perfetto, pump da paura, specchio amico. Esci che sei un bomber, fra.", d:{rispetto:6, drip:4}},
 ];
 function eventoCasuale(cb){
   const e = EVENTI[random(EVENTI.length)];
@@ -517,6 +783,8 @@ function vacanzaOggi(){ const dow=(S.giorno-1)%7; return dow>=5; } // sab/dom = 
 function dormi(){
   if(S.over) return;
   if(S.giorno>=30){ bossFinale(); return; }
+  // morte improvvisa demenziale (~1 partita su 4)
+  if(Math.random() < DEATH_PER_DAY){ morteImprovvisa(); return; }
   // decadimenti passivi ribilanciati: l'hype svanisce in fretta, il rispetto va riguadagnato
   S.hype = clamp(S.hype-3,0,100);
   if(S.rispetto>12) S.rispetto-=2;
@@ -552,6 +820,7 @@ function dormi(){
 function spendi(){
   if(S.sbatti<=0){ toast("Sbatti finiti, vai a nanna 😴", true); return false; }
   S.sbatti--;
+  if(Math.random() < 0.01) randomInsult(); // 1% delle azioni: una voce ti insulta
   return true;
 }
 
@@ -580,6 +849,7 @@ function azioneScuola(tipo){
   }
 
   else if(tipo==="minsed"){
+    sfxPacino();
     if(S.sesso==="M"){ // minaccia
       if(S.rispetto>=30 || random(10)<1){
         S.materie[i]=Math.min(10,S.materie[i]+2);
@@ -629,6 +899,7 @@ let currentTab="piazza";
 function render(){
   if(S.over) return;
   renderHUD();
+  renderChar();
   const sc=$("screen");
   if(currentTab==="piazza")  sc.innerHTML=viewPiazza();
   if(currentTab==="scuola")  sc.innerHTML=viewScuola();
@@ -749,6 +1020,7 @@ function viewDrip(){
     <div class="eyebrow">Drip · livello ${S.drip}/100</div>
     <h2 class="title">L'Armadio</h2>
     <p class="sub">Più drip = più rispetto e più hype, senza muovere un dito. Compra e indossa, fra.</p>
+    <div class="dripChar">${characterSVG()}<div class="cap">${S.nome} · drip ${S.drip}/100</div></div>
     ${ownedHtml}
     <div class="eyebrow" style="margin-bottom:8px">🛒 Negozio</div>
     ${items}
@@ -876,7 +1148,7 @@ function viewSocial(){
   const fatto=S.socialUsato;
   const db=Math.floor(S.drip/10);
   const cur=veicoloAttuale();
-  const haMezzo=cur.tier>=2;
+  const haMezzo=true;
   return `
     <div class="eyebrow">Social · hype ${S.hype}/100</div>
     <h2 class="title">Il Profilo</h2>
@@ -901,7 +1173,7 @@ function viewSocial(){
     <div class="card ${fatto||!haMezzo?"lock":"tap"}" ${(!fatto&&haMezzo)?'data-act="flexmezzo"':""}>
       <div class="cardrow"><div class="ai">${cur.e}</div><div class="body">
         <h3>Flexa il mezzo</h3>
-        <p>${haMezzo?`Reel mentre sgasi col ${cur.nome.split(" (")[0]}. Rispetto e hype assicurati.`:"Ti serve almeno un cinquantino. Vai al Garage, fra."}</p>
+        <p>Reel mentre sgasi col ${cur.nome.split(" (")[0]}. ${cur.tier<=1?"<i>Sì, anche se è quello che è.</i> ":""}Rispetto e hype.</p>
         <div class="cost"><span class="tagp">🔥 +${6+cur.tier}</span><span class="tagp">📱 +${6+cur.tier}</span></div>
       </div></div>
     </div>
@@ -972,7 +1244,7 @@ function compra(k){
 function compraVeicolo(k){
   const v=VEICOLI.find(x=>x.k===k); if(!v||S.veicoli[k]) return;
   if(S.grana<v.costo){ toast("Grana insufficiente, fra",true); return; }
-  S.grana-=v.costo; S.veicoli[k]=true; play("scooter");
+  S.grana-=v.costo; S.veicoli[k]=true; vehicleSound(k);
   applica({rispetto:v.risp, hype:v.hype, drip:v.drip});
   renderHUD();
   popup(v.e,"Nuovo mezzo!",
@@ -987,7 +1259,7 @@ function provaMatch(idx){
   const chance = clamp(rizz() - c.soglia + 45, 5, 95);
   if(random(100) < chance){
     S.crush = {nome:c.nome, e:c.e, vibe:50, clout:c.clout, ultima:S.giorno};
-    const dd = applica({hype:4*c.clout, rispetto:2*c.clout}); play("crush");
+    const dd = applica({hype:4*c.clout, rispetto:2*c.clout}); sfxSuadente();
     renderHUD();
     popup(c.e, "Match! 💘", `<b>${c.nome}</b> ti ha risposto in DM. Avete vibe, fra. <i>Il rizz funziona.</i>`, dd, ()=>render());
   } else {
@@ -1053,7 +1325,7 @@ function azione(a){
       if(!spendi()){ renderHUD(); return; }
       S.socialUsato=true;
       if(random(10)<6){
-        const dd=applica({hype:14}); play("crush");
+        const dd=applica({hype:14}); play("social");
         renderHUD();
         popup("🎵","BOOM, virale!","Il balletto fa il botto. <i>Tac, sei nel giro fra.</i>",dd,()=>eventoCasuale(()=>render()));
       } else {
@@ -1066,13 +1338,14 @@ function azione(a){
     case "flexmezzo":{
       if(S.socialUsato){ toast("Già postato oggi",true); return; }
       const cur=veicoloAttuale();
-      if(cur.tier<2){ toast("Ti serve almeno un cinquantino",true); return; }
       if(!spendi()){ renderHUD(); return; }
       S.socialUsato=true;
       const b=cur.tier;
-      const dd=applica({rispetto:6+b, hype:6+b}); play("scooter");
+      const dd=applica({rispetto:6+b, hype:6+b}); vehicleSound(cur.k);
       renderHUD();
-      popup(cur.e,"Reel del mezzo",`Sgasi in slow-motion col <b>${cur.nome.split(" (")[0]}</b>, sole dietro. La piazza impazzisce. <i>Skerr.</i>`,dd,()=>render());
+      const extra = cur.k==="monopattino" ? " <i>(parte un rombo da Formula 1, non si sa perché)</i>"
+                  : cur.k==="macchina"    ? " <i>(la marmitta fa pfff-pft-pft come un cinquantino)</i>" : "";
+      popup(cur.e,"Reel del mezzo",`Sgasi in slow-motion col <b>${cur.nome.split(" (")[0]}</b>, sole dietro.${extra} La piazza impazzisce.`,dd,()=>render());
       return;
     }
 
@@ -1086,7 +1359,7 @@ function azione(a){
     case "chatta":{
       if(!S.crush){ toast("Nessuna crush attiva",true); return; }
       if(!spendi()){ renderHUD(); return; }
-      S.crush.vibe=clamp(S.crush.vibe+6,0,100); S.crush.ultima=S.giorno; play("social");
+      S.crush.vibe=clamp(S.crush.vibe+6,0,100); S.crush.ultima=S.giorno; play("crush");
       renderHUD();
       // ogni tanto fai il delulu
       if(random(10)<3){
@@ -1101,7 +1374,7 @@ function azione(a){
       if(!S.crush){ toast("Nessuna crush attiva",true); return; }
       if(S.grana<20){ toast("Servono 20€",true); return; }
       if(!spendi()){ renderHUD(); return; }
-      S.grana-=20; S.crush.vibe=clamp(S.crush.vibe+14,0,100); S.crush.ultima=S.giorno; play("crush");
+      S.grana-=20; S.crush.vibe=clamp(S.crush.vibe+14,0,100); S.crush.ultima=S.giorno; sfxSuadente();
       const dd=applica({hype:3, rispetto:2});
       renderHUD();
       popup("🍦","Uscita fatta",`Gelato, due giri in piazza, una storia taggata con <b>${S.crush.nome}</b>. Vi shippano già.`,[{l:"💶",v:-20},{l:"💞",v:+14}].concat(dd),()=>render());
@@ -1111,7 +1384,7 @@ function azione(a){
       if(!S.crush){ toast("Nessuna crush attiva",true); return; }
       if(S.grana<40){ toast("Servono 40€",true); return; }
       if(!spendi()){ renderHUD(); return; }
-      S.grana-=40; S.crush.vibe=clamp(S.crush.vibe+18,0,100); S.crush.ultima=S.giorno; play("crush");
+      S.grana-=40; S.crush.vibe=clamp(S.crush.vibe+18,0,100); S.crush.ultima=S.giorno; sfxSuadente();
       renderHUD();
       popup("🎁","Regalo consegnato",`Profumo + collana per <b>${S.crush.nome}</b>. La vibe schizza. <i>W totale, fra.</i>`,[{l:"💶",v:-40},{l:"💞",v:+18}],()=>render());
       return;
@@ -1120,7 +1393,7 @@ function azione(a){
       if(!S.crush || S.crush.vibe<60){ toast("Serve vibe ≥60",true); return; }
       if(!spendi()){ renderHUD(); return; }
       S.crush.ultima=S.giorno;
-      const dd=applica({hype:8*S.crush.clout, rispetto:4}); play("crush");
+      const dd=applica({hype:8*S.crush.clout, rispetto:4}); sfxSuadente();
       renderHUD();
       popup("📸","Couple goals postati",`Reel di coppia col mezzo, musica trap, tramonto. La piazza vi shippa a manetta. <i>Iconici.</i>`,dd,()=>render());
       return;
@@ -1246,12 +1519,15 @@ function startGame(){
   $("hud").style.display="block";
   $("screen").style.display="block";
   $("tabs").style.display="grid";
+  $("charCorner").style.display="block";
   currentTab="piazza";
   render();
 }
 function restart(){
   $("end").classList.add("hide");
   $("boss").classList.add("hide");
+  $("death").classList.add("hide");
+  $("charCorner").style.display="none";
   $("hud").style.display="none";
   $("screen").style.display="none";
   $("tabs").style.display="none";
@@ -1270,6 +1546,7 @@ function onTap(e){
   // bottoni fissi
   if (t.closest("#startBtn"))  { startGame();  return; }
   if (t.closest("#againBtn"))  { restart();    return; }
+  if (t.closest("#deathAgain")){ restart();    return; }
   if (t.closest("#muteBtn"))   { toggleMute(); return; }
   if (t.closest("#popOk"))     { $("modal").classList.remove("show"); const cb=popCb; popCb=null; if(cb) cb(); return; }
   if (t.closest("#bossNext"))  { $("boss").classList.add("hide"); finePartita(bossWon); return; }
