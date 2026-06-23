@@ -736,7 +736,7 @@ let popCb = null;
 /* applica un set di delta allo stato (con cap) e ritorna l'array per il popup */
 function applica(delta){
   const out=[];
-  for(const k in delta){
+  for(const k in (delta||{})){
     const v=delta[k];
     if(k==="grana"){ S.grana=Math.max(0,S.grana+v); out.push({l:"💶",v}); }
     else if(k==="rispetto"){ S.rispetto=clamp(S.rispetto+v,0,100); out.push({l:"🔥",v}); }
@@ -769,12 +769,59 @@ const EVENTI = [
   {ic:"📚", t:"Interrogazione a sorpresa", b:"La prof ti interroga proprio mentre stavi flexando. Figura da NPC totale.", d:{rispetto:-4, hype:-4}},
   {ic:"🍝", t:"Carbonara con la panna", b:"Posti una storia con la carbonara alla panna. L'Italia intera ti ratio nei commenti.", d:{hype:-8, rispetto:-3}},
   {ic:"💪", t:"Pump in palestra", b:"Day di petto perfetto, pump da paura, specchio amico. Esci che sei un bomber, fra.", d:{rispetto:6, drip:4}},
+
+  /* ===== frasi originali di Tabboz Simulator (1997-99, Andrea Bonomi, GPL) riadattate ad eventi maranza ===== */
+  // disgrazie a caso per strada
+  {ic:"🐦", t:"Piccione cecchino", b:"Mentre giri per il quartiere con la compagnia, un piccione ti caga in testa. <i>Drip rovinato.</i>", d:{rispetto:-4, drip:-5}},
+  {ic:"🐕", t:"Cane maleducato", b:"Un cane ti piscia su una gamba davanti a tutti. La tuta tecnica non perdona.", d:{drip:-6, rispetto:-3}},
+  {ic:"💩", t:"Lago di letame", b:"Cadi in un lago di merda tra le risate generali della piazza.", d:{rispetto:-8, hype:-4}},
+  {ic:"🌊", t:"Bagno a Parco Sempione", b:"Scivoli e cadi nel laghetto di Parco Sempione. Tutto fradicio, fra.", d:{drip:-5, rispetto:-4}},
+  {ic:"🤘", t:"Rissa col metallaro", b:"Cerchi la rissa con un metallaro e lui ti spacca le ossa. Sottovalutato di brutto.", d:{rispetto:-6, hype:-3}},
+  {ic:"🧔", t:"Era un uomo", b:"Passa una tipa, fai i tuoi commenti da bomber... poi si gira ed è un uomo. <i>Cringe totale.</i>", d:{rispetto:-5, hype:-4}},
+  {ic:"🤮", t:"Due birre di troppo", b:"Bevi due birre e vomiti per tutta la sera. Serata bruciata.", d:{hype:-5, rispetto:-3}},
+  {ic:"🚽", t:"Sciolta improvvisa", b:"Un attacco di diarrea ti costringe a restare a casa. Niente piazza oggi.", d:{hype:-6}},
+  {ic:"🚛", t:"Onda di fango", b:"Sei fermo al semaforo, un TIR ti passa vicino e ti solleva addosso un'ondata di fango.", d:{drip:-8, rispetto:-3}},
+  {ic:"📺", t:"Diretta persa", b:"La connessione salta e perdi la live del tuo streamer preferito. <i>Che sbatti.</i>", d:{hype:-4}},
+  // disastri in palestra
+  {ic:"🪟", t:"Volo dalla finestra", b:"Sollevando i pesi ti sbilanci e precipiti dalla finestra dietro di te. Solo lividi, scialla.", d:{rispetto:-6, hype:-3}},
+  {ic:"🥜", t:"Bilanciere traditore", b:"Giochicchiando con un bilanciere ti fracassi le palle. Giornata no.", d:{rispetto:-4, hype:-4}},
+  {ic:"🚲", t:"Cyclette impazzita", b:"Mentre attraversi la palestra vieni travolto da una cyclette impazzita.", d:{rispetto:-4}},
+  {ic:"🚿", t:"Doccia horror", b:"Un guasto alle tubature fa piovere liquami dalla tua doccia. Altro che profumo intero.", d:{drip:-5, rispetto:-3}},
+  {ic:"💊", t:"Pillole sbagliate", b:"Scopri di aver preso le pillole sbagliate al posto degli anabolizzanti. <i>Imbarazzo puro.</i>", d:{hype:-4, rispetto:-3}},
+  {ic:"🔥", t:"Armadietto in fiamme", b:"Per un simpatico scherzo, il tuo armadietto viene dato alle fiamme. Addio roba.", d:{grana:-25, rispetto:-3}},
+  {ic:"💦", t:"Ascelle in mostra", b:"Una tipa ride per le vistose chiazze di sudore sotto le tue ascelle. Niente flex oggi.", d:{hype:-5, rispetto:-2}},
+  // due di picche quando ci provi
+  {ic:"❄️", t:"Due di picche", b:"Ci provi con una tipa: «Non mi caghi nemmeno di striscio...» Ghiaccio totale.", d:{hype:-4, rispetto:-3}},
+  {ic:"🥶", t:"Stroncato", b:"«Non vorrei offendere i tuoi sentimenti, ma mi fai proprio cagare.» <i>Che L, fra.</i>", d:{hype:-6, rispetto:-3}},
+  {ic:"⚰️", t:"Preferisce morire", b:"«Meglio morire che mettermi con uno come te.» Apprezziamo la sincerità.", d:{hype:-5}},
+  {ic:"🤼", t:"Il ragazzo lottatore", b:"Ci provi e lei: «Il mio ragazzo è campione di lotta libera.» Meglio lasciar perdere.", d:{rispetto:-4}},
+  {ic:"👖", t:"Tirati su i pantaloni", b:"«Comincia a tirarti su i pantaloni...» Il tuo flex non ha funzionato per niente.", d:{rispetto:-3, drip:-3}},
+  // mollato / dissato
+  {ic:"📵", t:"Ci ho riflettuto", b:"Una tipa ti scrive: «Ci ho riflettuto a lungo... vaffanculo!» Asciutta come il Sahara.", d:{hype:-5, rispetto:-3}},
+  {ic:"🔄", t:"Sostituito", b:"«Ho trovato uno che vale 1000 volte te.» Upgrade lampo, niente da fare.", d:{hype:-5, rispetto:-3}},
+  {ic:"😴", t:"Troppo bravo", b:"«Non bestemmi, non dici parolacce, non picchi i bambini. Sei noioso.» Mollato per buona condotta.", d:{hype:-3, rispetto:-2}},
+  // disastri (o glorie) a scuola — toccano una materia a caso
+  {ic:"👊", t:"Pestaggio gratuito", b:"Senza una precisa ragione, picchi il prof di {mat}. Voto a picco, ma in piazza ne parlano.", d:{rispetto:6}, mat:-2},
+  {ic:"💧", t:"Sputo di precisione", b:"Sputi dalla finestra della classe e centri in pieno il prof di {mat}. <i>Mira da cecchino.</i>", d:{rispetto:5}, mat:-2},
+  {ic:"🛵", t:"Contro l'auto del prof", b:"Col motorino di un amico ti scontri contro la macchina del prof di {mat}. Danni e figuraccia.", d:{grana:-20}, mat:-2},
+  {ic:"🤬", t:"Offesa alla madre del prof", b:"Offendi la moralità della madre del prof di {mat}. Lui non gradisce, la piazza sì.", d:{rispetto:5}, mat:-2},
+  {ic:"🍺", t:"Tabboz News", b:"Litighi con uno al bar, fai dei commenti su una tipa, lei si gira... ed è tua cugina. <i>Disastro.</i>", d:{rispetto:-4, hype:-3}},
 ];
 function eventoCasuale(cb){
   const e = EVENTI[random(EVENTI.length)];
   const dd = applica(e.d);
+  let body = e.b;
+  if(typeof e.mat === "number"){            // effetto su una materia a caso
+    const idx = random(S.materie.length);
+    const before = S.materie[idx];
+    S.materie[idx] = clamp(S.materie[idx] + e.mat, 0, 10);
+    body = body.replace(/\{mat\}/g, MATERIE[idx]);
+    const diff = S.materie[idx] - before;
+    if(diff !== 0) dd.push({l:MATERIE[idx], v:diff});
+    calcolaStudio();
+  }
   renderHUD();
-  popup(e.ic, e.t, e.b, dd, cb);
+  popup(e.ic, e.t, body, dd, cb);
 }
 
 /* ============ FINE GIORNO ============ */
